@@ -13,6 +13,8 @@
 
 + (void)reorderBuffer:(AudioBufferList *)audioBufferList;
 
-+ (UInt32)covert16bitsTo32bits:(AudioBufferList *)inputBufferList outputBufferList:(AudioBufferList *)outputBufferList;
++ (void)covert16bitsTo32bits:(AudioBufferList *)inputBufferList outputBufferList:(AudioBufferList *)outputBufferList;
+
++ (void)covert32bitsTo16bits:(AudioBufferList *)inputBufferList outputBufferList:(AudioBufferList *)outputBufferList;
 
 @end

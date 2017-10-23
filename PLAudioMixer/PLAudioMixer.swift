@@ -277,7 +277,7 @@ extension AudioBufferList {
 
 extension AVAudioPCMBuffer {
     
-    public func toSampleBuffer(duration: CMTime? = nil, pts: CMTime? = nil, dts: CMTime? = nil) -> CMSampleBuffer? {
+    public func toStandardSampleBuffer(duration: CMTime? = nil, pts: CMTime? = nil, dts: CMTime? = nil) -> CMSampleBuffer? {
         
         var sampleBuffer: CMSampleBuffer? = nil
         
@@ -287,9 +287,31 @@ extension AVAudioPCMBuffer {
         
         var timing = CMSampleTimingInfo(duration: CMTimeMake(1, 44100), presentationTimeStamp: new_pts, decodeTimeStamp: kCMTimeInvalid)
         
-        guard CMSampleBufferCreate(kCFAllocatorDefault, nil, false, nil, nil, self.format.formatDescription, CMItemCount(self.frameLength), 1, &timing, 0, nil, &sampleBuffer) == noErr else { return nil }
+        var output_format = self.format
         
-        guard CMSampleBufferSetDataBufferFromAudioBufferList(sampleBuffer!, kCFAllocatorDefault, kCFAllocatorDefault, 0, self.audioBufferList) == noErr else {
+        var pcmBuffer = self
+        
+        if ((self.format.streamDescription.pointee.mFormatFlags & kAudioFormatFlagIsSignedInteger) != kAudioFormatFlagIsSignedInteger) {
+            
+            var convert_asbd = AudioStreamBasicDescription(mSampleRate: self.format.sampleRate, mFormatID: kAudioFormatLinearPCM, mFormatFlags: (kAudioFormatFlagIsSignedInteger | kAudioFormatFlagIsPacked), mBytesPerPacket: 2, mFramesPerPacket: 1, mBytesPerFrame: 2, mChannelsPerFrame: 1, mBitsPerChannel: 16, mReserved: 0)
+            
+            let covert_format = AVAudioFormat(streamDescription: &convert_asbd)
+            
+            let covert_buffer = AVAudioPCMBuffer(pcmFormat: covert_format, frameCapacity: self.frameCapacity)
+            
+            covert_buffer.frameLength = covert_buffer.frameCapacity
+            
+            PLAudioMixerUtlis.covert32bitsTo16bits(self.mutableAudioBufferList, outputBufferList: covert_buffer.mutableAudioBufferList)
+            
+            output_format = covert_format
+            
+            pcmBuffer = covert_buffer
+            
+        }
+        
+        guard CMSampleBufferCreate(kCFAllocatorDefault, nil, false, nil, nil, output_format.formatDescription, CMItemCount(self.frameLength), 1, &timing, 0, nil, &sampleBuffer) == noErr else { return nil }
+        
+        guard CMSampleBufferSetDataBufferFromAudioBufferList(sampleBuffer!, kCFAllocatorDefault, kCFAllocatorDefault, 0, pcmBuffer.audioBufferList) == noErr else {
             
             return nil
             
@@ -365,5 +387,4 @@ extension CMSampleBuffer {
     }
     
 }
-
 
